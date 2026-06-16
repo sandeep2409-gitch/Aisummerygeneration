@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Text Summarizer | 30 Days of Code</title>
+    <meta name="description" content="Paste any text and instantly generate a concise summary using state-of-the-art Hugging Face models (BART & T5) with local GPU acceleration.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="background-decor animate-bg">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-wand-magic-sparkles animate-pulse"></i>
+                </div>
+                <div>
+                    <h1>Summify AI</h1>
+                    <p class="subtitle">Day 24: AI Text Summarizer</p>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <!-- Model Status Badge -->
+                <div id="status-container" class="status-badge status-loading">
+                    <span class="status-dot"></span>
+                    <span id="status-text">Checking server...</span>
+                    <span id="device-badge" class="device-badge" style="display: none;">CPU</span>
+                </div>
+                
+                <!-- Dark Mode Toggle -->
+                <button id="theme-toggle" class="theme-btn" aria-label="Toggle dark mode">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="workspace-grid">
+            
+            <!-- Left Panel: Input & Controls -->
+            <section class="panel glass input-panel" id="input-section">
+                <div class="panel-header">
+                    <h2>Source Document</h2>
+                    <div class="input-actions">
+                        <button id="btn-sample" class="action-btn-sm" title="Load Sample Text">
+                            <i class="fa-solid fa-file-lines"></i> Sample
+                        </button>
+                        <button id="btn-paste" class="action-btn-sm" title="Paste from Clipboard">
+                            <i class="fa-solid fa-clipboard"></i> Paste
+                        </button>
+                        <button id="btn-clear" class="action-btn-sm" title="Clear Text">
+                            <i class="fa-solid fa-trash-can"></i> Clear
+                        </button>
+                    </div>
+                </div>
+
+                <div class="textarea-wrapper">
+                    <textarea id="source-text" placeholder="Paste or type your long article, document, or notes here (minimum 10 words)..." required autofocus></textarea>
+                    <div class="counter-footer">
+                        <span id="char-counter">0 characters</span>
+                        <span id="word-counter">0 words</span>
+                    </div>
+                </div>
+
+                <!-- Config Controls -->
+                <div class="config-grid">
+                    <!-- Model Selection -->
+                    <div class="control-group">
+                        <label for="model-select">AI Model</label>
+                        <div class="custom-select-wrapper">
+                            <select id="model-select">
+                                <option value="sshleifer/distilbart-cnn-6-6" selected>BART-CNN (High Quality - 460MB)</option>
+                                <option value="t5-small">T5-Small (Fast - 242MB)</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down select-arrow"></i>
+                        </div>
+                    </div>
+
+                    <!-- Target Length Segmented Control -->
+                    <div class="control-group">
+                        <label>Target Length</label>
+                        <div class="segmented-control" id="length-selector">
+                            <button type="button" class="segment-btn" data-len="short" data-min="10" data-max="50">Short</button>
+                            <button type="button" class="segment-btn active" data-len="medium" data-min="40" data-max="120">Medium</button>
+                            <button type="button" class="segment-btn" data-len="long" data-min="100" data-max="250">Long</button>
+                            <button type="button" class="segment-btn" data-len="custom">Custom</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom Range Control (Initially Hidden) -->
+                <div id="custom-length-sliders" class="collapsible-panel" style="display: none;">
+                    <div class="sliders-row">
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label for="min-words">Min Summary Words</label>
+                                <span id="min-words-val">30</span>
+                            </div>
+                            <input type="range" id="min-words" min="10" max="150" value="30">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label for="max-words">Max Summary Words</label>
+                                <span id="max-words-val">120</span>
+                            </div>
+                            <input type="range" id="max-words" min="30" max="400" value="120">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Advanced Settings Toggle -->
+                <details class="advanced-settings-details">
+                    <summary class="advanced-summary">
+                        <span><i class="fa-solid fa-sliders"></i> Advanced Generation Settings</span>
+                        <i class="fa-solid fa-chevron-right details-arrow"></i>
+                    </summary>
+                    <div class="advanced-content">
+                        <div class="sliders-row">
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <label for="slider-temp" title="Higher values make output more creative, lower values more focused">Temperature</label>
+                                    <span id="temp-val">1.0</span>
+                                </div>
+                                <input type="range" id="slider-temp" min="0.1" max="2.0" step="0.1" value="1.0">
+                            </div>
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <label for="slider-beams" title="Beam search algorithm parameter. Higher = better quality but slower">Beam Count</label>
+                                    <span id="beams-val">4</span>
+                                </div>
+                                <input type="range" id="slider-beams" min="1" max="8" step="1" value="4">
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <button id="btn-summarize" class="btn-primary" disabled>
+                    <span id="btn-text">Summarize Text</span>
+                    <i class="fa-solid fa-arrow-right btn-icon"></i>
+                </button>
+            </section>
+
+            <!-- Right Panel: Output & Analytics -->
+            <section class="panel glass output-panel" id="output-section">
+                <div class="panel-header">
+                    <h2>AI Summary</h2>
+                    <div class="output-actions" style="display: none;" id="output-actions-container">
+                        <button id="btn-copy" class="action-btn-sm" title="Copy to Clipboard">
+                            <i class="fa-solid fa-copy"></i> Copy
+                        </button>
+                        <button id="btn-download" class="action-btn-sm" title="Download Text File">
+                            <i class="fa-solid fa-download"></i> Save
+                        </button>
+                        <button id="btn-speak" class="action-btn-sm" title="Listen (Text-to-Speech)">
+                            <i class="fa-solid fa-volume-high"></i> Speak
+                        </button>
+                    </div>
+                </div>
+
+                <div class="output-wrapper">
+                    <!-- Default Blank State -->
+                    <div class="empty-state" id="summary-empty">
+                        <div class="empty-icon-wrapper">
+                            <i class="fa-solid fa-file-circle-question"></i>
+                        </div>
+                        <h3>Your summary will appear here</h3>
+                        <p>Paste text in the left pane and hit "Summarize Text" to invoke the AI.</p>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div class="loading-state" id="summary-loading" style="display: none;">
+                        <div class="spinner-wrapper">
+                            <div class="spinner"></div>
+                            <i class="fa-solid fa-brain loader-brain animate-pulse"></i>
+                        </div>
+                        <h3 id="loader-title">Synthesizing Text...</h3>
+                        <p id="loader-subtitle" class="loader-tip">Initializing summarization pipeline...</p>
+                    </div>
+
+                    <!-- Summary Rich Text Box -->
+                    <div class="summary-content" id="summary-result" style="display: none;">
+                        <p id="summary-text"></p>
+                    </div>
+                </div>
+
+                <!-- Summary Analytics Panel -->
+                <div class="analytics-card" id="analytics-panel" style="display: none;">
+                    <div class="analytics-header">
+                        <h3>Efficiency Analytics</h3>
+                        <span class="badge" id="reduction-rate">Saved 0%</span>
+                    </div>
+                    <div class="analytics-body">
+                        <div class="metric">
+                            <span class="metric-label">Original Length</span>
+                            <span class="metric-value" id="metric-orig-words">0 words</span>
+                        </div>
+                        <div class="metric-divider"></div>
+                        <div class="metric">
+                            <span class="metric-label">Summary Length</span>
+                            <span class="metric-value" id="metric-sum-words">0 words</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" id="efficiency-progress"></div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+        
+        <footer class="app-footer">
+            <p>Made with &hearts; using Hugging Face Transformers &amp; Flask</p>
+        </footer>
+    </div>
+
+    <!-- Main Script -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
